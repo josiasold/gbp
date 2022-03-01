@@ -1,0 +1,56 @@
+# Not traced folders
+bin/
+lib/
+lib64/
+share/
+build/
+.vscode/
+# !include/gbp/**
+# include
+include/lemon
+include/NTL
+include/ntl-11.5.1
+include/xflens
+include/xsimd
+include/xtensor
+include/xtensor-blas
+include/xtl
+include/xtensor.hpp
+sim/input/input_files
+sim/output
+
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+
+*.tar
