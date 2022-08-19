@@ -1,10 +1,9 @@
-# BP-GBP: An open source library for (generalized) belief propagation decoding of quantum codes
+# GBP: An open source library for generalized belief propagation decoding of quantum codes
 
 A C++ library implementing a Generalized Belief Propagation [YFM-GBP](https://ieeexplore.ieee.org/abstract/document/14590449). It is currently restricted to 
 - two-layer Regiongraphs with one check and its adjacent qubits in top- and intersection qubits in bottom-regions
 and provides special features
-- hard-decision as union of beliefs over top-regions
-- re-initialize with converged (or non-converged lower weight) partial syndrome
+- hard-decision based on beliefs over top-regions
 
 ## Build Library
 
@@ -16,6 +15,7 @@ Libraries used are
 - [gmp](https://gmplib.org) in conjunction with NTL
 - [xtensor](https://github.com/xtensor-stack/xtensor), [xtensor-blas](https://github.com/xtensor-stack/xtensor-blas) and their dependencies as data structure
 - [lemon graph library](https://lemon.cs.elte.hu/trac/lemon) as graph structure
+- [libDAI](https://staff.fnwi.uva.nl/j.m.mooij/libDAI/) for factors
 
 The json header only library included in the `include` directory should work right away. In order to work with the given CMakeLists files, best install NTL with gmp, xtensor et al. and lemon into the root directory, such that header files are in `include`.
 
@@ -39,7 +39,7 @@ make install
 ```
 
 The examples are
-- `sim.cpp` for GBP decoding
+- `sim.cpp` for binary GBP decoding
 
 ### Run examples
 The example scripts use input files to set the properties of decoding. Exemplary input files are given in `sim/input/input_files`.
