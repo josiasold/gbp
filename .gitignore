@@ -54,3 +54,5 @@ sim/output
 
 
 *.tar
+.rc
+core.*
