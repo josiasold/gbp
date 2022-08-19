@@ -80,6 +80,22 @@ inline std::string container_to_string(const T &inp, const char * description, c
 };
 
 template <typename T>
+inline std::string container_to_string(const T &inp)
+{
+    std::stringstream ss;
+    for (size_t i = 0; i < inp.size(); i++)
+    {
+        ss << i << ":" << inp.at(i);
+        if (i <  inp.size() - 1)
+        {
+            ss << " , ";
+        }
+    }
+
+    return ss.str();
+};
+
+template <typename T>
 inline std::string map_to_string(const std::map<T, size_t> inp)
 {
     std::stringstream ss;

@@ -14,6 +14,7 @@
 #include <gbp/la_tools.hpp>
 #include <gbp/error_channels.hpp>
 #include <gbp/timing.hpp>
+#include <gbp/decoderS.hpp>
 #include <gbp/decoderB.hpp>
 #include <gbp/properties.hpp>
 
@@ -83,6 +84,17 @@ int main(int argc, char **argv)
     properties.set("verbose",verbose);
     properties.set("hard_decision_method",hard_decision_method);
     properties.set("save_history",save_history);
+
+    gbp::PropertySet propertiesPP;
+    propertiesPP.set("max_iterations",20);
+    propertiesPP.set("max_repetitions",1);
+    propertiesPP.set("repeat_p0_strategy",repeat_p0_strategy);
+    propertiesPP.set("repeat_stopping_criterion",repeat_stopping_criterion);
+    propertiesPP.set("damping",damping);
+    propertiesPP.set("normalize",normalize);
+    propertiesPP.set("verbose",verbose);
+    propertiesPP.set("hard_decision_method",1);
+    propertiesPP.set("save_history",save_history);
 
     // Construct output directory and file
 
@@ -161,16 +173,17 @@ int main(int argc, char **argv)
 
     // error probabilities
     xt::xarray<long double> ps;
-    if (p == -10) ps = {0.001, 0.005,0.01,0.02,0.03,0.04,0.05,0.06,0.07,0.08,0.09,0.1,0.11,0.12,0.13,0.14,0.15,0.16};  // depolarizing
-    // if (p == -10) ps = {0.11,0.12,0.13,0.14,0.15,0.16};  // depolarizing save
-    else if (p == -11) ps = xt::linspace<long double>(0.11,0.16,9);  // depolarizing_th
-    else if (p == -12) ps = xt::logspace<long double>(0.000001,0.01,9);  // depolarizing_lowp
-    else if (p == -20) ps = {0.001, 0.005,0.01,0.02,0.03,0.04,0.05,0.06,0.07,0.08,0.09,0.1,0.11,0.12,0.13,0.14,0.15,0.16,0.17,0.18,0.19,0.2}; // xz
-    else if (p == -21) ps = xt::linspace<long double>(0.16,0.2,9); // xz_th
-    else if (p == -22) ps = xt::logspace<long double>(0.000001,0.01,9); // xz_lowp
-    // else if (p == -20) ps = {0.12,0.13,0.14,0.15,0.16,0.17,0.18,0.19,0.2}; // xz save
-
-    // if (p == -30) ps = {0.001, 0.005,0.01,0.02,0.03,0.04,0.05,0.06,0.07,0.08};  // depolarizing
+    if (p == -1) ps = {0.001,0.0025,0.005,0.0075,0.01,0.02,0.03,0.04};
+    else if (p == -2) ps = {0.05,0.06,0.07,0.08,0.09,0.1,0.11,0.12};
+    else if (p == -3) ps = xt::arange<long double>(0.001,0.5,0.001);
+    else if (p == -4) ps = {0.15,0.153,0.156,0.159,0.162,0.165,0.168,0.171};
+    else if (p == -5) ps = {7.0/n_q,8.0/n_q};
+    else if (p == -6) ps = {0.001,0.003,0.007,0.01,0.02,0.03,0.04,0.05};
+    else if (p == -7) ps = {0.001, 0.005,0.01,0.02,0.03,0.04,0.05,0.06,0.07,0.08,0.09,0.1,0.11,0.12,0.13,0.14,0.15,0.16};
+    else if (p == -8) ps = xt::arange<long double>(0.09,0.101,0.003);
+    else if (p == -9) ps = {0.125,0.1275,0.13,0.1325,0.135,0.1375,0.14,0.1425,0.145,0.1475,0.15};
+    else if (p == -10) ps = xt::arange<long double>(0.0,0.9,0.05);
+    else if (p == -11) ps = xt::arange<long double>(0.0,0.51,0.05);
     else ps = {p};
 
     std::cout << "p\tch_sc\tsci\tsce\tler\tfail\trep_p\trep_s\titer\tber" << std::endl;
@@ -187,8 +200,8 @@ int main(int argc, char **argv)
     // construct channel
     NoisyChannel noisyChannel;
 
-    // construct Decoder 
-    gbp::DecoderB Decoder(H_X, H_Z, properties);
+    // construct ScalarDecoder 
+    gbp::DecoderS ScalarDecoder(H, properties);
 
     size_t repeat_p0 = 0;
     xt::xarray<long double> repeat_p0s_range = xt::linspace<long double>(0.001, 0.499, 100);
@@ -208,6 +221,7 @@ int main(int argc, char **argv)
 
         long double p_error = ps(i_p);
         long double p_error_for_decoder;
+
         if (p_initial_strategy == -1)
         {
             p_error_for_decoder = ps(i_p);
@@ -221,7 +235,7 @@ int main(int argc, char **argv)
             p_error_for_decoder = ps(i_p);
             repeat_p0 = (size_t)p_initial_strategy;
         }
-        xt::xarray<long double> p_initial;
+        xt::xarray<long double> p_initial({4});
         p_to_xar(p_error_for_decoder,p_initial,channel);
         // sample error channel
         for (size_t i_e = 0; i_e < n_errorsamples; i_e++)
@@ -229,11 +243,8 @@ int main(int argc, char **argv)
             xt::xarray<int> y = x;
             if (channel == "custom")
             {
-                // y(35)=2 ; y(36)=3 ; y(38)=3 ; y(41)=2 ; y(58)=1 ; y(62)=2 ; y(70)=2 ; y(71)=3 ; y(73)=1 ; y(81)=2 ; y(84)=1 ; y(85)=3 ; y(86)=2 ; y(90)=1 ; y(101)=3 ; y(104)=3 ; y(106)=3 ; y(112)=2 ; y(118)=2 ; y(123)=1 ; y(128)=3 ; y(129)=1 ; y(131)=2 ; y(137)=3 ; y(143)=1 ; y(163)=1 ; y(167)=1 ; y(188)=3 ; y(193)=3 ; y(194)=3 ; y(197)=1 ; y(205)=2 ; y(212)=2 ; y(217)=2;
-                y(7)=2; y(12)=2; y(18)=1; y(19)=2; y(45)=3; y(50)=2; y(53)=2; y(55)=2; y(61)=3; y(71)=3; y(77)=3; y(81)=1; y(83)=3; y(84)=3; y(88)=1; y(89)=3; y(93)=2; y(101)=1; y(104)=1; y(105)=1; y(106)=3; y(113)=2; y(114)=2; y(116)=2; y(117)=1; y(123)=1; y(132)=2; y(134)=3;
-                // y(10)=1 ; y(12)=3 ; y(16)=3 ; y(19)=2 ; y(21)=3 ; y(24)=3 ; y(29)=3 ; y(39)=1 ; y(40)=3 ; y(41)=1 ; y(71)=1 ; y(73)=1 ; y(74)=1 ; y(81)=2 ; y(90)=1 ; y(96)=3 ; y(108)=3 ; y(111)=3 ; y(117)=1 ; y(120)=2 ; y(127)=1 ; y(129)=3 ; y(137)=1 ; y(143)=1;
-                // auto string = xt::view(y,xt::range(81,87));
-                // string = 1;
+                // y(4)=1; y(23)=3; y(31)=1; y(36)=2; y(39)=2; y(54)=2; y(63)=1; y(71)=1; y(100)=1; y(110)=1; y(132)=2; y(162)=1; y(190)=1; y(191)=3; y(212)=3; y(226)=1; y(228)=3; y(229)=1; y(247)=2; y(256)=3; y(299)=2; y(307)=1; y(316)=1; y(364)=2; y(395)=1;
+                y(0)=2; y(32)=2; y(80)=2;
             }
             else
             {
@@ -264,25 +275,22 @@ int main(int argc, char **argv)
                 xt::xarray<int> error_guess;
                 xt::xarray<int> s;
                 if (repeat_p0 > 0)
-                {
                     repeat_p0s = xt::random::choice(repeat_p0s_range,repeat_p0-1);
-                }
                 for (size_t i_rp0 = 0; i_rp0 <= repeat_p0; i_rp0++)
                 {
                     if (i_rp0 > 0)
                     {
                         long double pp = repeat_p0s(i_rp0);
                         p_to_xar(pp,p_initial,channel);
+                        // p_initial = {1-pp,pp/3.0,pp/3.0,pp/3.0};
                     }
-
-                    error_guess = Decoder.decode(p_initial,s_0);
-                    
+                    error_guess = ScalarDecoder.decode(p_initial,s_0,channel);
                     
                     s = gf4_syndrome(error_guess, H);
                     
                     if (save_raw_data)
                     {
-                        Decoder.dump_history(OUTPUT_DIR);
+                        ScalarDecoder.dump_history(OUTPUT_DIR);
                     }
                     if (s == s_0)
                     {
@@ -292,19 +300,19 @@ int main(int argc, char **argv)
                 } // for (size_t i_rp0 = 0; i_rp0 <= repeat_p0; i_rp0++)
 
 
-                // xt::xarray<int> error_guess = Decoder.decode(p_initial,s_0);
+                // xt::xarray<int> error_guess = ScalarDecoder.decode(p_initial,s_0);
                 
                 // xt::xarray<int> s = gf4_syndrome(error_guess, H);
                 
                 if (save_raw_data)
                 {
-                    Decoder.dump_history(OUTPUT_DIR);
+                    ScalarDecoder.dump_history(OUTPUT_DIR);
                 }
                 
                 if (s == s_0)
                 {
-                    iterations += Decoder.took_iterations();
-                    repeatsplit += Decoder.took_repetitions();
+                    iterations += ScalarDecoder.took_iterations();
+                    repeatsplit += ScalarDecoder.took_repetitions();
                     xt::xarray<int> residual_error = error_guess ^ y;
                     if (residual_error == x)
                     {
@@ -337,6 +345,81 @@ int main(int argc, char **argv)
                 } // if (s == s_0)
                 else
                 {
+                    // postprocessor
+                    
+                    // get subMatrices
+                    xt::xarray<int> HX_sub;
+                    xt::xarray<int> Xchecks_sub;
+                    xt::xarray<int> Xqubits_sub;
+                    ScalarDecoder.get_subH(HX_sub,Xchecks_sub,Xqubits_sub,1);
+
+                    xt::xarray<int> HZ_sub;
+                    xt::xarray<int> Zchecks_sub;
+                    xt::xarray<int> Zqubits_sub;
+                    ScalarDecoder.get_subH(HZ_sub,Zchecks_sub,Zqubits_sub,2);
+
+                    // construct Decoder 
+                    if (HX_sub.size()>0)
+                    {
+                        gbp::DecoderB XDecoder(HX_sub, propertiesPP, true);
+                        xt::xarray<int> s_sub = xt::index_view(s,Xchecks_sub);
+                        std::cout << "s_sub = " << s_sub << std::endl;  
+                        long double pp = xt::sum(s_sub)()/(long double)s_sub.size();
+                        p_to_xar(pp,p_initial,channel);
+                        std::cout << "p_initial = " << p_initial << std::endl;  
+                        xt::xarray<int> error_guess_sub = XDecoder.decode_separate(p_initial,s_sub);
+                        xt::xarray<int> mapped_back = xt::zeros<int>({n_q});
+                        
+                        for (int i = 0; i < error_guess_sub.size(); i++)
+                        {
+                            if (error_guess_sub(i) == 1)
+                            {
+                                mapped_back(Xqubits_sub(i)) = 1;
+                            }
+                        }
+                        std::cout << "error_guess_sub = " << error_guess_sub << std::endl; 
+                        std::cout << container_to_string(mapped_back,"| mapped_back",true) << std::endl;
+                        error_guess ^= mapped_back;
+                    }
+                    if (HX_sub.size()>0)
+                    {
+                        gbp::DecoderB ZDecoder(HZ_sub, properties);
+                    }
+                    
+                    s = gf4_syndrome(error_guess, H);
+                    if (s == s_0)
+                    {
+                        xt::xarray<int> residual_error = error_guess ^ y;
+                        if (residual_error == x)
+                        {
+                            dec_sci++;
+                            if (verbose == 3)
+                            {
+                                std::cout << "++ PP Success (i)"<< std::endl;
+                                OUTPUT_FILE << "++ PP Success (i)"<< std::endl;
+                            }
+                        }
+                        else if (gf4_isEquiv(residual_error, H, n_c, n_q))
+                        {
+                            dec_sce++;
+                            if (verbose == 3)
+                            {
+                                std::cout << "++ PP Success (e)"<< std::endl;
+                                OUTPUT_FILE << "++ PP Success (e)"<< std::endl;
+                            }
+                        }
+                        else
+                        {
+                            dec_ler++;
+                            if (verbose == 3)
+                            {
+                                std::cout << "-- PP Logical Error"<< std::endl;
+                                OUTPUT_FILE << "-- PP Logical Error"<< std::endl;
+                            }
+                        }
+                    }
+                    else
+                    {
                     dec_fail++;
                     if (verbose == 3)
                     {
@@ -349,8 +432,14 @@ int main(int argc, char **argv)
                         OUTPUT_FILE << "-- GBP Failure"<< std::endl;
                         std::cout << container_to_string(y,"| y",true) << std::endl;
                         OUTPUT_FILE << container_to_string(y,"| y",true) << std::endl;
-                        std::cout << "__" << std::endl;
-                        OUTPUT_FILE << "__" << std::endl;
+                         std::cout << container_to_string(error_guess,"| error_guess",true) << std::endl;
+                        OUTPUT_FILE << container_to_string(error_guess,"| error_guess",true) << std::endl;
+                        xt::xarray<int> residual_error = error_guess ^ y;
+                        std::cout << container_to_string(residual_error,"| residual_error",true) << std::endl;
+                        OUTPUT_FILE << container_to_string(residual_error,"| residual_error",true) << std::endl;
+                        std::cout << "--" << std::endl;
+                        OUTPUT_FILE << "--" << std::endl;
+                    }
                     }
                 } // else <-- if (s == s_0)
             } // else <-- if (y == x)

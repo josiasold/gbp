@@ -17,3 +17,11 @@ install(TARGETS sim
         DESTINATION ${PROJECT_SOURCE_DIR}/sim)
 install(TARGETS sim_q
         DESTINATION ${PROJECT_SOURCE_DIR}/sim)
+install(TARGETS sim_s
+        DESTINATION ${PROJECT_SOURCE_DIR}/sim)
+install(TARGETS sim_sweep_initial
+        DESTINATION ${PROJECT_SOURCE_DIR}/sim)
+install(TARGETS sim_sweep_initial_fixed
+        DESTINATION ${PROJECT_SOURCE_DIR}/sim)
+install(TARGETS sim_rr
+        DESTINATION ${PROJECT_SOURCE_DIR}/sim)

@@ -5,7 +5,7 @@ message(STATUS "CMAKE_SOURCE_DIR: ${CMAKE_SOURCE_DIR}")
 message(STATUS "CMAKE_PREFIX_PATH: ${CMAKE_PREFIX_PATH}")
 message(STATUS "HEADER_LIST: ${HEADER_LIST}")
 
-add_library(gbp error_channels.cpp timing.cpp factor.cpp exceptions.cpp util.cpp varset.cpp region_graph.cpp decoder.cpp ${HEADER_LIST})
+add_library(gbp error_channels.cpp timing.cpp factor.cpp exceptions.cpp util.cpp properties.cpp varset.cpp region_graph.cpp region_graphQ.cpp tanner_graph.cpp decoderB.cpp decoderQ.cpp decoderS.cpp ${HEADER_LIST})
 
 target_include_directories(gbp PUBLIC ../include)
 target_include_directories(gbp PUBLIC ../lib)
@@ -63,7 +63,7 @@ target_compile_features(gbp PUBLIC cxx_std_17)
 
 
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O3 -march=native")
-# SET(PLATFORM_SPECIFIC_LIBS "-lpthread")
+SET(PLATFORM_SPECIFIC_LIBS "-lpthread")
 
 
 target_link_libraries(gbp PUBLIC ${LEMON} stdc++ stdc++fs ${NTL} ${GMP} m xtensor)

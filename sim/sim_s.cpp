@@ -14,8 +14,7 @@
 #include <gbp/la_tools.hpp>
 #include <gbp/error_channels.hpp>
 #include <gbp/timing.hpp>
-#include <gbp/decoderB.hpp>
-#include <gbp/properties.hpp>
+#include <gbp/decoderS.hpp>
 
 #include "xtensor/xarray.hpp"
 #include "xtensor/xnpy.hpp" // load_npy, dump_npy
@@ -56,7 +55,7 @@ int main(int argc, char **argv)
     long double p_initial_strategy = json_input.value("p_initial_strategy",-1.0);
     static const size_t repeat_p0_strategy = json_input.value("repeat_p0_strategy",0);
     static const size_t repeat_stopping_criterion = json_input.value("repeat_stopping_criterion",0);
-    
+
     long double damping = json_input.value("damping",0.9);
     long double normalize = json_input.value("normalize",true);
 
@@ -72,6 +71,7 @@ int main(int argc, char **argv)
     bool return_if_success = json_input.value("return_if_success",true);
     bool only_non_converged = json_input.value("only_non_converged",true);
 
+
     // construct propertiSet
     gbp::PropertySet properties;
     properties.set("max_iterations",max_iterations);
@@ -83,6 +83,7 @@ int main(int argc, char **argv)
     properties.set("verbose",verbose);
     properties.set("hard_decision_method",hard_decision_method);
     properties.set("save_history",save_history);
+
 
     // Construct output directory and file
 
@@ -161,20 +162,21 @@ int main(int argc, char **argv)
 
     // error probabilities
     xt::xarray<long double> ps;
-    if (p == -10) ps = {0.001, 0.005,0.01,0.02,0.03,0.04,0.05,0.06,0.07,0.08,0.09,0.1,0.11,0.12,0.13,0.14,0.15,0.16};  // depolarizing
-    // if (p == -10) ps = {0.11,0.12,0.13,0.14,0.15,0.16};  // depolarizing save
-    else if (p == -11) ps = xt::linspace<long double>(0.11,0.16,9);  // depolarizing_th
-    else if (p == -12) ps = xt::logspace<long double>(0.000001,0.01,9);  // depolarizing_lowp
-    else if (p == -20) ps = {0.001, 0.005,0.01,0.02,0.03,0.04,0.05,0.06,0.07,0.08,0.09,0.1,0.11,0.12,0.13,0.14,0.15,0.16,0.17,0.18,0.19,0.2}; // xz
-    else if (p == -21) ps = xt::linspace<long double>(0.16,0.2,9); // xz_th
-    else if (p == -22) ps = xt::logspace<long double>(0.000001,0.01,9); // xz_lowp
-    // else if (p == -20) ps = {0.12,0.13,0.14,0.15,0.16,0.17,0.18,0.19,0.2}; // xz save
-
-    // if (p == -30) ps = {0.001, 0.005,0.01,0.02,0.03,0.04,0.05,0.06,0.07,0.08};  // depolarizing
+    if (p == -1) ps = {0.001,0.0025,0.005,0.0075,0.01,0.02,0.03,0.04,0.05,0.06,0.07,0.08};
+    else if (p == -2) ps = {0.05,0.06,0.07,0.08,0.09,0.1,0.11,0.12};
+    else if (p == -3) ps = xt::arange<long double>(0.001,0.5,0.001);
+    else if (p == -4) ps = {0.15,0.153,0.156,0.159,0.162,0.165,0.168,0.171};
+    else if (p == -5) ps = {7.0/n_q,8.0/n_q};
+    else if (p == -6) ps = {0.001,0.003,0.007,0.01,0.02,0.03,0.04,0.05};
+    else if (p == -7) ps = {0.001, 0.005,0.01,0.02,0.03,0.04,0.05,0.06,0.07,0.08,0.09,0.1,0.11,0.12,0.13,0.14,0.15,0.16,0.17,0.18,0.19};
+    else if (p == -8) ps = xt::arange<long double>(0.09,0.101,0.003);
+    else if (p == -9) ps = {0.125,0.1275,0.13,0.1325,0.135,0.1375,0.14,0.1425,0.145,0.1475,0.15};
+    else if (p == -10) ps = xt::arange<long double>(0.0,0.9,0.05);
+    else if (p == -11) ps = xt::arange<long double>(0.0,0.51,0.05);
     else ps = {p};
 
-    std::cout << "p\tch_sc\tsci\tsce\tler\tfail\trep_p\trep_s\titer\tber" << std::endl;
-    OUTPUT_FILE  << "p\tch_sc\tsci\tsce\tler\tfail\trep_p\trep_s\titer\tber" << std::endl;
+    std::cout << "p\tch_sc\tsci\tsce\tler\tfail\trepeat\titer\tber" << std::endl;
+    OUTPUT_FILE  << "p\tch_sc\tsci\tsce\tler\tfail\trepeat\titer\tber" << std::endl;
     
     // initial word.
     xt::xarray<int> x = xt::zeros<int>({n_q});
@@ -188,12 +190,11 @@ int main(int argc, char **argv)
     NoisyChannel noisyChannel;
 
     // construct Decoder 
-    gbp::DecoderB Decoder(H_X, H_Z, properties);
+    gbp::DecoderS Decoder(H, properties);
 
     size_t repeat_p0 = 0;
     xt::xarray<long double> repeat_p0s_range = xt::linspace<long double>(0.001, 0.499, 100);
     xt::xarray<long double> repeat_p0s = 0;
-    
     for (size_t i_p = 0; i_p < ps.size(); i_p++)
     {
         // tracked quantities
@@ -202,7 +203,6 @@ int main(int argc, char **argv)
         int dec_sce = 0;
         int dec_ler = 0;
         int dec_fail = 0;
-        int repeat_p  = 0;
         int iterations = 0;
         int repeatsplit  = 0;
 
@@ -223,6 +223,7 @@ int main(int argc, char **argv)
         }
         xt::xarray<long double> p_initial;
         p_to_xar(p_error_for_decoder,p_initial,channel);
+
         // sample error channel
         for (size_t i_e = 0; i_e < n_errorsamples; i_e++)
         {
@@ -230,10 +231,11 @@ int main(int argc, char **argv)
             if (channel == "custom")
             {
                 // y(35)=2 ; y(36)=3 ; y(38)=3 ; y(41)=2 ; y(58)=1 ; y(62)=2 ; y(70)=2 ; y(71)=3 ; y(73)=1 ; y(81)=2 ; y(84)=1 ; y(85)=3 ; y(86)=2 ; y(90)=1 ; y(101)=3 ; y(104)=3 ; y(106)=3 ; y(112)=2 ; y(118)=2 ; y(123)=1 ; y(128)=3 ; y(129)=1 ; y(131)=2 ; y(137)=3 ; y(143)=1 ; y(163)=1 ; y(167)=1 ; y(188)=3 ; y(193)=3 ; y(194)=3 ; y(197)=1 ; y(205)=2 ; y(212)=2 ; y(217)=2;
-                y(7)=2; y(12)=2; y(18)=1; y(19)=2; y(45)=3; y(50)=2; y(53)=2; y(55)=2; y(61)=3; y(71)=3; y(77)=3; y(81)=1; y(83)=3; y(84)=3; y(88)=1; y(89)=3; y(93)=2; y(101)=1; y(104)=1; y(105)=1; y(106)=3; y(113)=2; y(114)=2; y(116)=2; y(117)=1; y(123)=1; y(132)=2; y(134)=3;
+                // y(7)=2; y(12)=2; y(18)=1; y(19)=2; y(45)=3; y(50)=2; y(53)=2; y(55)=2; y(61)=3; y(71)=3; y(77)=3; y(81)=1; y(83)=3; y(84)=3; y(88)=1; y(89)=3; y(93)=2; y(101)=1; y(104)=1; y(105)=1; y(106)=3; y(113)=2; y(114)=2; y(116)=2; y(117)=1; y(123)=1; y(132)=2; y(134)=3;
                 // y(10)=1 ; y(12)=3 ; y(16)=3 ; y(19)=2 ; y(21)=3 ; y(24)=3 ; y(29)=3 ; y(39)=1 ; y(40)=3 ; y(41)=1 ; y(71)=1 ; y(73)=1 ; y(74)=1 ; y(81)=2 ; y(90)=1 ; y(96)=3 ; y(108)=3 ; y(111)=3 ; y(117)=1 ; y(120)=2 ; y(127)=1 ; y(129)=3 ; y(137)=1 ; y(143)=1;
                 // auto string = xt::view(y,xt::range(81,87));
                 // string = 1;
+                y(7) = 1; y(17)=1;y(8) = 1; y(18)=1;
             }
             else
             {
@@ -261,40 +263,9 @@ int main(int argc, char **argv)
                     std::cout << container_to_string(s_0,"s_0",true) << std::endl;
                     OUTPUT_FILE << container_to_string(s_0,"s_0",true) << std::endl;
                 }
-                xt::xarray<int> error_guess;
-                xt::xarray<int> s;
-                if (repeat_p0 > 0)
-                {
-                    repeat_p0s = xt::random::choice(repeat_p0s_range,repeat_p0-1);
-                }
-                for (size_t i_rp0 = 0; i_rp0 <= repeat_p0; i_rp0++)
-                {
-                    if (i_rp0 > 0)
-                    {
-                        long double pp = repeat_p0s(i_rp0);
-                        p_to_xar(pp,p_initial,channel);
-                    }
-
-                    error_guess = Decoder.decode(p_initial,s_0);
-                    
-                    
-                    s = gf4_syndrome(error_guess, H);
-                    
-                    if (save_raw_data)
-                    {
-                        Decoder.dump_history(OUTPUT_DIR);
-                    }
-                    if (s == s_0)
-                    {
-                        repeat_p += i_rp0;
-                        break;
-                    }
-                } // for (size_t i_rp0 = 0; i_rp0 <= repeat_p0; i_rp0++)
-
-
-                // xt::xarray<int> error_guess = Decoder.decode(p_initial,s_0);
+                xt::xarray<int> error_guess = Decoder.decode(p_initial,s_0);
                 
-                // xt::xarray<int> s = gf4_syndrome(error_guess, H);
+                xt::xarray<int> s = gf4_syndrome(error_guess, H);
                 
                 if (save_raw_data)
                 {
@@ -358,21 +329,19 @@ int main(int argc, char **argv)
             if ((verbose == 1) && ((n_errorsamples >= 100) && (i_e % (int)(n_errorsamples * 0.1) == 0)))// print status to std::cout every 10% of n_errorsamples
             {
                 long double ber = (long double)(dec_ler + dec_fail) / (long double)(i_e+1);
-                long double avg_repeat_p = (long double)(repeat_p) / (long double)(i_e+1-ch_sc);
                 long double avg_repeatsplit = (long double)(repeatsplit) / (long double)(i_e+1-ch_sc);
                 long double avg_iterations = (long double)(iterations) / (long double)(i_e+1-ch_sc);
                 
-                std::cout << p_error << "\t" << ch_sc << "\t" << dec_sci << "\t" << dec_sce << "\t" << dec_ler << "\t" << dec_fail << "\t" << std::fixed << std::setw(3) << std::setprecision(3) << avg_repeat_p << "\t" << avg_repeatsplit << "\t" << avg_iterations << "\t" << ber << std::endl;
+                std::cout << p_error << "\t" << ch_sc << "\t" << dec_sci << "\t" << dec_sce << "\t" << dec_ler << "\t" << dec_fail << "\t" << std::fixed << std::setw(3) << std::setprecision(3) << avg_repeatsplit << "\t" << avg_iterations << "\t" << ber << std::endl;
             }
 
         } // for (size_t i_e = 0; i_e < n_errorsamples; i_e++)
         long double ber = (long double)(dec_ler + dec_fail) / (long double)n_errorsamples;
         long double avg_repeatsplit = (long double)(repeatsplit) / (long double)(n_errorsamples-ch_sc);
         long double avg_iterations = (long double)(iterations) / (long double)(n_errorsamples-ch_sc);
-        long double avg_repeat_p = (long double)(repeat_p) / (long double)(n_errorsamples-ch_sc);
         
-        std::cout << p_error << "\t" << ch_sc << "\t" << dec_sci << "\t" << dec_sce << "\t" << dec_ler << "\t" << dec_fail << "\t"<< std::fixed << std::setw(3) << std::setprecision(3) << avg_repeat_p << "\t"  << avg_repeatsplit << "\t"<< std::fixed << std::setw(3) << std::setprecision(3) << avg_iterations << "\t"<< std::fixed << std::setw(3) << std::setprecision(3) << ber << std::endl;
-        OUTPUT_FILE << p_error << "\t" << ch_sc << "\t" << dec_sci << "\t" << dec_sce << "\t" << dec_ler << "\t" << dec_fail << "\t"<< std::fixed << std::setw(3) << std::setprecision(3) << avg_repeat_p << "\t"  << avg_repeatsplit << "\t"<< std::fixed << std::setw(3) << std::setprecision(3) << avg_iterations << "\t"<< std::fixed << std::setw(3) << std::setprecision(3) << ber << std::endl;
+        std::cout << p_error << "\t" << ch_sc << "\t" << dec_sci << "\t" << dec_sce << "\t" << dec_ler << "\t" << dec_fail << "\t"<< std::fixed << std::setw(3) << std::setprecision(3) << avg_repeatsplit << "\t"<< std::fixed << std::setw(3) << std::setprecision(3) << avg_iterations << "\t"<< std::fixed << std::setw(3) << std::setprecision(3) << ber << std::endl;
+        OUTPUT_FILE << p_error << "\t" << ch_sc << "\t" << dec_sci << "\t" << dec_sce << "\t" << dec_ler << "\t" << dec_fail << "\t"<< std::fixed << std::setw(3) << std::setprecision(3) << avg_repeatsplit << "\t"<< std::fixed << std::setw(3) << std::setprecision(3) << avg_iterations << "\t" << std::fixed << std::setw(3) << std::setprecision(3) << ber << std::endl;
 
     } // for (size_t i_p = 0; i_p < ps.size(); i_p++)
 

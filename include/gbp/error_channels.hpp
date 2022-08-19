@@ -28,6 +28,8 @@ class NoisyChannel
 
                 void send_through_pauli_channel(xt::xarray<int> *y, double p_error, int type);
 
+                void send_through_pauli_channel(xt::xarray<int> *y, double p_error, std::string channel);
+
                 void send_through_biased_channel(xt::xarray<int> *y,xt::xarray<double> p_initial);
 
                 void erasure_channel(xt::xarray<int> *y,xt::xarray<int> *erasures, double p_error);
@@ -43,17 +45,8 @@ class NoisyChannel
 
 };
 
-void xz_channel(xt::xarray<int> *y, double p_error,std::mt19937 *random_generator);
 
-void x_channel(xt::xarray<int> *y, double p_error,std::mt19937 *random_generator);
-
-void depolarizing_channel(xt::xarray<int> *y, double p_error,std::mt19937 *random_generator);
-
-void const_weight_error_channel(xt::xarray<int> *y, int weight, std::mt19937 *random_generator);
-
-void const_weight_error_channel(xt::xarray<int> *y, int weight, int max_qubit, int n_paulis,std::mt19937 *random_generator);
-
-void erasure_channel(xt::xarray<int> *y,xt::xarray<int> *erasures, double p_error, std::mt19937 *random_generator);
+void p_to_xar(long double p, xt::xarray<long double> &p_vec, std::string channel="depolarizing");
 
 
 #endif

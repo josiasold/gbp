@@ -221,6 +221,12 @@ inline int gf4_conj(int a)
   return conj_table[a];
 };
 
+inline int gf4_trace(int a)
+{
+    static const int trace_table[4] = {0, 0, 1, 1};
+    return trace_table[a];
+}
+
 inline int hamming_weight(const xt::xarray<int> &x)
 {
   int hw = 0;

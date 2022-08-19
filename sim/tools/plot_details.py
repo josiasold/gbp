@@ -1,11 +1,15 @@
-from posixpath import join
+# from posixpath import join
+from tkinter.font import families
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib import rcParams
 from matplotlib import rc
 from matplotlib.legend_handler import HandlerLine2D, HandlerTuple
+
 import argparse
-from numpy.core.fromnumeric import size
+# from numpy.core.fromnumeric import size
 import scipy.optimize as sco
 import networkx as nx
 import os,sys,json
@@ -72,15 +76,134 @@ def plot_time(propertySet):
     ax[0].set_ylabel('running time $t/sll$')
     
 
-        
+def plot_pinitial(propertySet):
+    # from scipy.interpolate import interp2d
+    print('*  Plotting channel error probability vs. decoder p_initial')
+    PATH = []
+    BASEPATH = propertySet.directory
+    for path,dirs,files in os.walk(BASEPATH):
+        for file in files:
+            print(file)
+            if file.endswith('.out'):
+                PATH += [BASEPATH+'/{}'.format(file)]
+                # break
+    print(PATH)
+    p_channel = []
+    p_decoder = []
+    failures = []
+    bers = []
+    for FILE in PATH:
+
+        input_data = np.genfromtxt(FILE,delimiter='\t',skip_header=3,skip_footer=2)
+
+        p_channel += [input_data[:,0]]
+        p_decoder += [input_data[:,1]/4]
+        failures += [input_data[:,5]]
+        bers += [input_data[:,-1]]
+
+
+        unique_p_channel = np.unique(input_data[:,0])
+        unique_p_decoder = np.unique(input_data[:,1]/4)
+
+    print(unique_p_channel,len(unique_p_channel))
+    print(unique_p_decoder,len(unique_p_decoder))
+
+    if len(p_channel) > 1:
+
+        assert np.all(p_channel[0] == p_channel[1])
+        assert np.all(p_decoder[0] == p_decoder[1])
+
+    p_channel = p_channel[0]
+    p_decoder = p_decoder[0]
+    failures = np.sum(failures,axis=0)
+    bers = np.mean(bers,axis=0)
     
-    plt.show()
+    diff = False
+
+    if diff:
+        p_decoder -= p_channel
+        x = np.argsort(p_decoder,axis=0)
+        p_decoder_sorted = p_decoder[x]
+
+        print(failures,len(failures))
+        failures = failures[x]
+        print(failures,len(failures))
+
+    
+    try:
+        step_pc = abs(unique_p_channel[-1] - unique_p_channel[-2])/2
+        step_pd = abs(unique_p_decoder[-1] - unique_p_decoder[-2])/2
+    except:
+        step_pc = 1
+        step_pd = 1
+
+    Z = bers.reshape((len(unique_p_decoder),len(unique_p_channel)),order='F')
+    Z = np.flipud(Z)
+
+    Z2 = failures.reshape((len(unique_p_decoder),len(unique_p_channel)),order='F')
+    Z2 = np.flipud(Z2)
+
+    fig,ax = plt.subplots(2,1,sharex=True,figsize=propertySet.figsize,constrained_layout=True)
+
+    cf = ax[0].imshow(Z,interpolation='none', extent=[unique_p_channel[0]-step_pc,unique_p_channel[-1]+step_pc,unique_p_decoder[0]-step_pd,unique_p_decoder[-1]+step_pd],cmap='RdGy', aspect='auto')
+    cb = plt.colorbar(cf, ax = ax[0])
+    cb.ax.get_yaxis().labelpad = 15
+    cb.ax.set_ylabel('block error rate', rotation=270)
+    
+    cf2 = ax[1].imshow(Z2,interpolation='none', extent=[unique_p_channel[0]-step_pc,unique_p_channel[-1]+step_pc,unique_p_decoder[0]-step_pd,unique_p_decoder[-1]+step_pd],cmap='RdGy', aspect='auto')
+    cb2 = plt.colorbar(cf2, ax = ax[1])
+    cb2.ax.get_yaxis().labelpad = 15
+    cb2.ax.set_ylabel('failures', rotation=270)
+
+    ax[1].set_xlabel('channel error probability')
+    ax[0].set_ylabel('decoder error probability')
+    ax[1].set_ylabel('decoder error probability')
+    fig.savefig(propertySet.directory+'/pvsp.'+propertySet.filetype)
+    # plt.show()
+
+def plot_pinitial_single(propertySet):
+    # from scipy.interpolate import interp2d
+    print('*  Plotting (fixed) channel error probability vs. decoder p_initial')
+    PATH = propertySet.directory
+    PATHS = []
+    for path,dirs,files in os.walk(PATH):
+        for file in files:
+            if file.endswith('.out'):
+                PATHS += [PATH+'/{}'.format(file)]
+                # break
+    print(PATHS)
+    p_decoder = []
+    failures = []
+    bers = []
+    for file in PATHS:
+        input_data = np.genfromtxt(file,delimiter='\t',skip_header=3,skip_footer=2)
+
+
+        p_decoder += [input_data[:,1]]
+        failures += [input_data[:,-4]]
+        bers += [input_data[:,-1]]
+
+    fig,ax = plt.subplots(2,1,sharex=True,figsize=propertySet.figsize,constrained_layout=True)
+
+    x = p_decoder[0]
+    y1,y1err = np.mean(bers,axis=0),np.std(bers,ddof=1,axis=0)
+    y2,y2err = np.mean(failures,axis=0),np.std(failures,ddof=1,axis=0)
+
+    ax[0].errorbar(x,y1,yerr=y1err,marker='o', ls ='--')
+    ax[1].errorbar(x,y2,yerr=y2err,marker='o', ls ='--')
+   
+
+    ax[1].set_xlabel('decoder error probability')
+    ax[0].set_ylabel('ber')
+    ax[1].set_ylabel('failures')
+    fig.savefig(propertySet.directory+'/pvsp.'+propertySet.filetype)
 
 def plot_egs(propertySet):
     print('*  Plotting weight of error guesses, their syndromes and thermodynamic quantities')
     error_guesses = np.load(propertySet.directory+'/errorguesses.npy').astype(np.int32)
     syndromes = np.load(propertySet.directory+'/syndromes.npy').astype(np.int32)
-    thermodynamic_quantities = np.load(propertySet.directory+'/tdqs.npy')
+    thermodynamic_quantities = np.load(propertySet.directory+'/tdqs.npy').astype(np.float)
+    np.save(propertySet.directory+'/tdqs.npy', thermodynamic_quantities)
     incompatibility_score = np.load(propertySet.directory+'/incompatibility.npy').astype(np.int32)
 
     weights_e = np.sum(error_guesses,axis=1)
@@ -116,12 +239,12 @@ def plot_egs(propertySet):
 
     fig,ax = plt.subplots(2,1,sharex=True,figsize=propertySet.figsize,constrained_layout=True)
     ax = ax.ravel()
-    ax[0].plot(weights_e,marker='$e$',linestyle=None,color='b')
-    ax[0].plot(weights_s,marker='$s$',linestyle=None,color='g')
-    ax[0].plot(incompatibility_score,marker='$i$',linestyle=None,color='r')
-    ax[1].plot(avg_energy,'bo--',label='$U$')
-    ax[1].plot(entropy,'ro--',label='$H$')
-    ax[1].plot(free_energy,'go--',label='$F$')
+    ax[0].plot(weights_e,marker='$e$',linestyle=None,color='b',label = '$\hat{e}$')
+    ax[0].plot(weights_s,marker='$s$',linestyle=None,color='g',label = '$s$')
+    # ax[0].plot(incompatibility_score,marker='$i$',linestyle=None,color='r')
+    ax[1].plot(avg_energy,'bo--',label='average energy $U$')
+    ax[1].plot(entropy,'ro--',label='entropy $H$')
+    ax[1].plot(free_energy,'go--',label='free energy $F$')
     
     for i,j in enumerate(repetitions):
         tick = repetitions[i]
@@ -130,16 +253,18 @@ def plot_egs(propertySet):
             ax[1].axvline(i-0.5,color='r')
 
     ax[1].set_xlabel('iteration')
-    ax[0].set_ylabel('$|\hat{e}|,|s|,i$')
-    ax[1].set_ylabel('Energy')
-    ax[1].legend()
+    ax[0].set_ylabel('Hamming weight')
+    ax[1].set_ylabel('Thermodynamic \n quantities')
+    ax[1].legend(loc='center left')
     for i in range(2):
         ax[i].grid()
-        # ax[i].set_ylim(-0.5)
-        # ax[i].set_ylim(-0.5)
-    plt.show()
+    ax[1].set_ylim(-0.1,max(entropy))
+    # ax[1].set_yscale('log')
+    fig.savefig(propertySet.directory+'/egs.'+propertySet.filetype)
+    # plt.show()
 
 def plot_code(propertySet):
+    # only works if verbose was set to 3
     import matplotlib.animation as animation
     from celluloid import Camera
     import ast
@@ -153,7 +278,8 @@ def plot_code(propertySet):
             OUT_FILE = f
     with open(os.path.join(propertySet.directory,OUT_FILE),'r') as of:
         lines = of.readlines()
-    
+
+
     for l,line in enumerate(lines):
         if l == 4 and line[0] == 'y':
             start = 0
@@ -170,7 +296,7 @@ def plot_code(propertySet):
                     start = i+2
             y = line[start:-1]
             y = '{' + y + '}'
-
+            
             initial_syndrome_dict = ast.literal_eval(y)
             initial_syndrome = list(initial_syndrome_dict.keys())
 
@@ -253,7 +379,7 @@ def surface_code_graph(d,error,syndrome,initial_error=0,initial_syndrome=0):
         elif c in inv_labels_X_checks:
             X_lit_checks += [inv_labels_X_checks[c]]
 
-    labels=labels_qubits|labels_X_checks|labels_Z_checks
+    labels={**labels_qubits,**labels_X_checks,**labels_Z_checks}
     
     blue_color = '#6666FF'
     red_color = '#FF0000'
@@ -330,7 +456,7 @@ def main():
     code_type = args.code_type
     directory = args.dir
     if directory == 'tmp':
-        directory = '/Users/josiasold/Documents/Studium/Archiv/ma/ma-paper/ma-paper_numerics/gbp/sim/output/tmp'
+        directory = '/home/jo378964/Dokumente/gbp_paper/gbp/sim/output/tmp'
     plot = args.plot
     n_iter = int(args.n_iter)
     file_type = args.file_type
@@ -366,6 +492,10 @@ def main():
         plot_code(propertySet)
     elif type == 'time':
         plot_time(propertySet)
+    elif type == 'pi':
+        plot_pinitial(propertySet)
+    elif type == 'pis':
+        plot_pinitial_single(propertySet)
 
 
 if __name__ == "__main__":

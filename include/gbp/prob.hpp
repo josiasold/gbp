@@ -586,7 +586,8 @@ namespace gbp
                 }
 
                 /// Normalizes vector using the specified norm
-                /** \throw NOT_NORMALIZABLE if the norm is zero
+                /** //\throw NOT_NORMALIZABLE if the norm is zero
+                 * don't normalize if norm is 0
          */
                 T normalize(ProbNormType norm = gbp::NORMPROB)
                 {
@@ -596,7 +597,8 @@ namespace gbp
                         else if (norm == gbp::NORMLINF)
                                 Z = maxAbs();
                         if (Z == (T)0)
-                                GBP_THROW(NOT_NORMALIZABLE);
+                                // GBP_THROW(NOT_NORMALIZABLE);
+                                Z = 1;
                         else
                                 *this /= Z;
                         return Z;
