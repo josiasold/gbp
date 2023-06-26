@@ -1,0 +1,21 @@
+{
+    "path_to_codes": "/rwthfs/rz/cluster/home/jo378964/Dokumente/gbp_paper/gbp/sim/input/codes/surface/",
+    "code": "surface_9",
+    "p_error": -10,
+    "channel" : "depolarizing",
+    "n_errorsamples": 5000,
+    "p_initial_strategy" :20,
+    "repeat_p0_strategy" :2,
+    "repeat_stopping_criterion" : 1,
+    "damping" : 1,
+    "normalize" : true,
+    "harddecision_method" : 1,
+    "max_repetitions" : 20,
+    "max_iterations" : 40,
+    "save_raw_data" : false,
+    "save_history" : false,
+    "verbose" : 0,
+    "return_if_success" : true,
+    "only_non_converged" : false,
+    "output_suffix" : "9"
+}
